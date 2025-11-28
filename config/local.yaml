@@ -1,0 +1,10 @@
+env: local
+storage_path: "./uploads"
+http_server:
+  address: "localhost:8080"
+  timeout: 5s
+  idle_timeout: 60s
+
+images:
+  allowed_formats: ["jpg", "jpeg", "png"]
+  max_upload_size_mb: 10
