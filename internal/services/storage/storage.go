@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"io"
 	"mime/multipart"
 	"os"
@@ -8,21 +10,26 @@ import (
 )
 
 type ImageStorage interface {
-	GenerateID() (string, error)
+	GenerateID() string
 	SaveFile(id string, file multipart.File, extension string) (string, error)
-	GetFile() error
-	DeleteFile() error
+	GetFile(id string, fileName string) ([]byte, error)
+	DeleteFile(id string) error
 }
 
 type FileSytstemStorage struct {
 	storagePath string
 }
 
-func (f FileSytstemStorage) GenerateID() (string, error) {
-
+//Метод генерации случайного ID
+func (f FileSytstemStorage) GenerateID() string {
+	bytes := make([]byte, 5)
+	if _, err := rand.Read(bytes); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(bytes)
 }
 
-// Функция предназначена для сохранения файла на диске. Создаёт директорию в корневой папке хранилища по
+// Метод предназначен для сохранения файла на диске. Создаёт директорию в корневой папке хранилища по
 // переданному id string. Копирует содержимое file multipart.File и сохраняет в cозданную ранее директорию.
 // Поддерживается сохранение изображений разного типа расширений ext string. 
 func (f FileSytstemStorage) SaveFile(id string, file multipart.File, ext string) (string, error) {
@@ -32,9 +39,10 @@ func (f FileSytstemStorage) SaveFile(id string, file multipart.File, ext string)
 		}
 	}
 
-	if err := os.MkdirAll(f.storagePath + "/" + id, 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(f.storagePath, id), 0755); err != nil {
 		return "", err
 	}
+
 	dstPath := filepath.Join(f.storagePath, id, "original" + ext)
 
 	dstFile, err := os.Create(dstPath)
@@ -49,10 +57,33 @@ func (f FileSytstemStorage) SaveFile(id string, file multipart.File, ext string)
 	return dstPath, nil
 }
 
-func (f FileSytstemStorage) GetFile() error {
 
+//Возвращает файл из каталога. id stirng - айди каталога,  filename string -
+//имя возвращаемого файла (cropped, original, resized, ...)
+func (f FileSytstemStorage) GetFile(id string, fileName string) ([]byte, error) {
+	readPath := filepath.Join(f.storagePath, id, fileName)
+
+	file, err := os.Open(readPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
 
-func (f FileSytstemStorage) DeleteFile() error {
-
+//Удаляет каталог по переданному ID
+func (f FileSytstemStorage) DeleteFile(id string) error {
+	err := os. RemoveAll(filepath.Join(f.storagePath, id))
+	if err != nil {
+		return err
+	}
+	return nil
 }
+
+//TODO метод для сохранения обработанного изображения
