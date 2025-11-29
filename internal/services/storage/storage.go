@@ -3,6 +3,7 @@ package storage
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"image"
 	"io"
 	"mime/multipart"
 	"os"
@@ -16,12 +17,12 @@ type ImageStorage interface {
 	DeleteFile(id string) error
 }
 
-type FileSystemStorage struct {
+type ImageStorageService struct {
 	StoragePath string
 }
 
 //Метод генерации случайного ID
-func (f FileSystemStorage) GenerateID() string {
+func (f ImageStorageService) GenerateID() string {
 	bytes := make([]byte, 5)
 	if _, err := rand.Read(bytes); err != nil {
 		return ""
@@ -32,7 +33,7 @@ func (f FileSystemStorage) GenerateID() string {
 // Метод предназначен для сохранения файла на диске. Создаёт директорию в корневой папке хранилища по
 // переданному id string. Копирует содержимое file multipart.File и сохраняет в cозданную ранее директорию.
 // Поддерживается сохранение изображений разного типа расширений ext string. 
-func (f FileSystemStorage) SaveFile(id string, file multipart.File, ext string) (string, error) {
+func (f ImageStorageService) SaveFile(id string, file multipart.File, ext string) (string, error) {
 	if _, err := os.Stat(f.StoragePath); os.IsNotExist(err) {
 		if err := os.MkdirAll(f.StoragePath, 0755); err != nil {
 			return "", err
@@ -60,7 +61,7 @@ func (f FileSystemStorage) SaveFile(id string, file multipart.File, ext string) 
 
 //Возвращает файл из каталога. id stirng - айди каталога,  filename string -
 //имя возвращаемого файла (cropped, original, resized, ...)
-func (f FileSystemStorage) GetFile(id string, fileName string) ([]byte, error) {
+func (f ImageStorageService) GetFile(id string, fileName string) ([]byte, error) {
 	readPath := filepath.Join(f.StoragePath, id, fileName)
 
 	file, err := os.Open(readPath)
@@ -78,7 +79,7 @@ func (f FileSystemStorage) GetFile(id string, fileName string) ([]byte, error) {
 }
 
 //Удаляет каталог по переданному ID
-func (f FileSystemStorage) DeleteFile(id string) error {
+func (f ImageStorageService) DeleteFile(id string) error {
 	err := os. RemoveAll(filepath.Join(f.StoragePath, id))
 	if err != nil {
 		return err
@@ -87,3 +88,6 @@ func (f FileSystemStorage) DeleteFile(id string) error {
 }
 
 //TODO метод для сохранения обработанного изображения
+func (f ImageStorageService) SaveProcessedFile(id string, img image.Image, operation string) error {
+	
+}

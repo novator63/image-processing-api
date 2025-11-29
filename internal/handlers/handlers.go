@@ -6,18 +6,21 @@ import (
 	"path/filepath"
 	"program/internal/config"
 	"program/internal/dto"
+	"program/internal/services/imageprocessing"
 	"program/internal/services/storage"
 	"slices"
 )
 
 type ImageHandler struct {
 	Storage storage.ImageStorage
+	ImageProcessor imageprocessing.ImageProcessor
 	cfg     *config.Config
 }
 
-func NewUploadHandler(storage storage.FileSystemStorage, cfg *config.Config) *ImageHandler {
+func NewUploadHandler(storage storage.ImageStorageService, imageProcessor imageprocessing.ImageProcessingService, cfg *config.Config) *ImageHandler {
 	return &ImageHandler{
 		Storage: storage,
+		ImageProcessor: imageProcessor,
 		cfg:     cfg,
 	}
 }
@@ -52,4 +55,8 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(uploadResponse)
+}
+
+func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {
+
 }

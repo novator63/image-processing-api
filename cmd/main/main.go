@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"program/internal/config"
 	"program/internal/handlers"
+	"program/internal/services/imageprocessing"
 	"program/internal/services/storage"
 
 	"github.com/go-chi/chi/v5"
@@ -13,8 +14,9 @@ import (
 
 func main() {
 	cfg := config.MustLoad()
-	storage := storage.FileSystemStorage{StoragePath: cfg.StoragePath}
-	imageHandler := handlers.NewUploadHandler(storage, cfg)
+	storage := storage.ImageStorageService{StoragePath: cfg.StoragePath}
+	imageProcessor := imageprocessing.ImageProcessingService{}
+	imageHandler := handlers.NewUploadHandler(storage, imageProcessor, cfg)
 
 	router := chi.NewRouter()
 
