@@ -16,12 +16,12 @@ type ImageStorage interface {
 	DeleteFile(id string) error
 }
 
-type FileSytstemStorage struct {
-	storagePath string
+type FileSystemStorage struct {
+	StoragePath string
 }
 
 //Метод генерации случайного ID
-func (f FileSytstemStorage) GenerateID() string {
+func (f FileSystemStorage) GenerateID() string {
 	bytes := make([]byte, 5)
 	if _, err := rand.Read(bytes); err != nil {
 		return ""
@@ -32,18 +32,18 @@ func (f FileSytstemStorage) GenerateID() string {
 // Метод предназначен для сохранения файла на диске. Создаёт директорию в корневой папке хранилища по
 // переданному id string. Копирует содержимое file multipart.File и сохраняет в cозданную ранее директорию.
 // Поддерживается сохранение изображений разного типа расширений ext string. 
-func (f FileSytstemStorage) SaveFile(id string, file multipart.File, ext string) (string, error) {
-	if _, err := os.Stat(f.storagePath); os.IsNotExist(err) {
-		if err := os.MkdirAll(f.storagePath, 0755); err != nil {
+func (f FileSystemStorage) SaveFile(id string, file multipart.File, ext string) (string, error) {
+	if _, err := os.Stat(f.StoragePath); os.IsNotExist(err) {
+		if err := os.MkdirAll(f.StoragePath, 0755); err != nil {
 			return "", err
 		}
 	}
 
-	if err := os.MkdirAll(filepath.Join(f.storagePath, id), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(f.StoragePath, id), 0755); err != nil {
 		return "", err
 	}
 
-	dstPath := filepath.Join(f.storagePath, id, "original" + ext)
+	dstPath := filepath.Join(f.StoragePath, id, "original" + ext)
 
 	dstFile, err := os.Create(dstPath)
 	if err != nil {
@@ -60,8 +60,8 @@ func (f FileSytstemStorage) SaveFile(id string, file multipart.File, ext string)
 
 //Возвращает файл из каталога. id stirng - айди каталога,  filename string -
 //имя возвращаемого файла (cropped, original, resized, ...)
-func (f FileSytstemStorage) GetFile(id string, fileName string) ([]byte, error) {
-	readPath := filepath.Join(f.storagePath, id, fileName)
+func (f FileSystemStorage) GetFile(id string, fileName string) ([]byte, error) {
+	readPath := filepath.Join(f.StoragePath, id, fileName)
 
 	file, err := os.Open(readPath)
 	if err != nil {
@@ -78,8 +78,8 @@ func (f FileSytstemStorage) GetFile(id string, fileName string) ([]byte, error) 
 }
 
 //Удаляет каталог по переданному ID
-func (f FileSytstemStorage) DeleteFile(id string) error {
-	err := os. RemoveAll(filepath.Join(f.storagePath, id))
+func (f FileSystemStorage) DeleteFile(id string) error {
+	err := os. RemoveAll(filepath.Join(f.StoragePath, id))
 	if err != nil {
 		return err
 	}

@@ -1,10 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"program/internal/config"
+	"program/internal/handlers"
+	"program/internal/services/storage"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -12,6 +13,8 @@ import (
 
 func main() {
 	cfg := config.MustLoad()
+	storage := storage.FileSystemStorage{StoragePath: cfg.StoragePath}
+	imageHandler := handlers.NewUploadHandler(storage, cfg)
 
 	router := chi.NewRouter()
 
@@ -27,6 +30,8 @@ func main() {
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Timeout(cfg.Timeout))
+
+	router.Post("/upload", imageHandler.UploadImage)
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("starting server error: %s", err)
