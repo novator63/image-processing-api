@@ -28,13 +28,6 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Timeout(cfg.Timeout))
 
-	router.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		resp := map[string]string{"message":"pong"}
-		json.NewEncoder(w).Encode(resp)
-	})
-
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("starting server error: %s", err)
 	}
