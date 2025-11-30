@@ -61,7 +61,20 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ImageHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
 
+	if !h.Storage.Exists(id) {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	err := h.Storage.DeleteFile(id)
+	if err != nil {
+		http.Error(w, "file delete error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {

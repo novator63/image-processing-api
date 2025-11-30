@@ -18,6 +18,7 @@ import (
 
 type ImageStorage interface {
 	DeleteFile(id string) error
+	Exists(id string) bool
 	GenerateID() string
 	GetFile(id string, fileName string) (*os.File, error)
 	GetFilePath(id, fileName string) (string, error)
@@ -56,7 +57,8 @@ func (f *ImageStorageService) SaveFile(id string, file multipart.File, ext strin
 	}
 
 	ext = strings.ToLower(ext)
-	dstPath := filepath.Join(f.StoragePath, id, "original"+ext)
+	dstPath := filepath.Join(f.StoragePath, id, "original" + ext)
+	dstURL := filepath.Base(f.StoragePath) + "/"+ id + "original"+ ext
 
 	dstFile, err := os.Create(dstPath)
 	if err != nil {
@@ -78,7 +80,7 @@ func (f *ImageStorageService) SaveFile(id string, file multipart.File, ext strin
 		return "", err
 	}
 
-	return dstPath, nil
+	return dstURL, nil
 }
 
 // Возвращает файл из каталога. id stirng - айди каталога,  filename string -
@@ -196,4 +198,10 @@ func (f *ImageStorageService) GetFilePath(id, fileName string) (string, error) {
 		return "", err
 	}
 	return filePath, nil
+}
+
+func (s *ImageStorageService) Exists(id string) bool {
+	path := filepath.Join(s.StoragePath, id)
+	_, err := os.Stat(path)
+	return err == nil
 }

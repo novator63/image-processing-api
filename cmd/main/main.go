@@ -38,7 +38,7 @@ func main() {
 	router.Get("/images", imageHandler.ImageIDsList)
 	router.Get("/images/{id}", imageHandler.ImagesList)
 	router.Get("/images/{id}/{filename}", imageHandler.GetImage)
-	router.Delete("/images/{id}", imageHandler.DeleteImage)      // TODO
+	router.Delete("/images/{id}", imageHandler.DeleteImage)
 
 	router.Post("/images/{id}/crop", imageHandler.CropImage)
 	router.Post("/images/{id}/resize", imageHandler.ResizeImage)
