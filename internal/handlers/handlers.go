@@ -2,9 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
-	"os"
 	"path/filepath"
 	"program/internal/config"
 	"program/internal/dto"
@@ -63,19 +61,15 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 
 func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	metaData, err := h.Storage.LoadMetadata(id)
+
+	metaData, inputPath, err := h.prepareImage(id)
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, "preparing image error", http.StatusBadRequest)
 		return
 	}
 
-	fileName := "crop" + metaData.Extension
-
-	path := filepath.Join(h.cfg.StoragePath, id)
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		http.Error(w, "image not found", http.StatusNotFound)
-		return
-	}
+	processedFilename := "crop" + metaData.Extension
+	outputURL := "/images/" + id + "/" + processedFilename
 
 	cropRequest := dto.CropRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&cropRequest); err != nil {
@@ -88,26 +82,63 @@ func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	inputPath := filepath.Join(h.cfg.StoragePath, id, "original"+metaData.Extension)
-	outputURL := filepath.Join(id, fileName)
-
 	img, err := h.ImageProcessor.Crop(inputPath, cropRequest.Width, cropRequest.Height)
 	if err != nil {
 		http.Error(w, "crop image error", http.StatusInternalServerError)
 		return
 	}
 
-	if err := h.Storage.SaveProcessedFile(id, fileName, img); err != nil {
+	if err := h.Storage.SaveProcessedFile(id, processedFilename, img); err != nil {
 		http.Error(w, "saving processed file error", http.StatusInternalServerError)
 		return
 	}
 
-	operationResopse := dto.OperationResponse{
+	operationResponse := dto.OperationResponse{
 		ID:   id,
 		Path: outputURL,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(operationResopse)
+	json.NewEncoder(w).Encode(operationResponse)
+}
+
+func (h *ImageHandler) ResizeImage(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (h *ImageHandler) BlurImage(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (h *ImageHandler) ContrastImage(w http.ResponseWriter, r *http.Request) {
+
+}
+func (h *ImageHandler) BrightnessImage(w http.ResponseWriter, r *http.Request) {
+
+}
+func (h *ImageHandler) SharpenImage(w http.ResponseWriter, r *http.Request) {
+
+}
+func (h *ImageHandler) GrayscaleImage(w http.ResponseWriter, r *http.Request) {
+
+}
+func (h *ImageHandler) InvertImage(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (h *ImageHandler) prepareImage(id string) (metaData dto.Metadata, inputPath string, err error) {
+	metaData, err = h.Storage.LoadMetadata(id)
+	if err != nil {
+		return dto.Metadata{}, "", err
+	}
+
+	originalFilename := "original" + metaData.Extension
+
+	inputPath, err = h.Storage.GetFilePath(id, originalFilename)
+	if err != nil {
+		return dto.Metadata{}, "", err
+	}
+
+	return metaData, inputPath, nil
 }

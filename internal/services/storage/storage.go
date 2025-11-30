@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"image"
 	"io"
 	"mime/multipart"
@@ -22,6 +23,7 @@ type ImageStorage interface {
 	DeleteFile(id string) error
 	SaveProcessedFile(id, fileName string, img image.Image) error
 	LoadMetadata(id string) (dto.Metadata, error)
+	GetFilePath(id, fileName string) (string, error)
 }
 
 type ImageStorageService struct {
@@ -53,11 +55,11 @@ func (f *ImageStorageService) SaveFile(id string, file multipart.File, ext strin
 
 	ext = strings.ToLower(ext)
 	dstPath := filepath.Join(f.StoragePath, id, "original"+ext)
-	
+
 	dstFile, err := os.Create(dstPath)
 	if err != nil {
 		return "", err
-	}	
+	}
 	defer dstFile.Close()
 
 	// Формируем метаданные
@@ -149,4 +151,12 @@ func (f *ImageStorageService) saveMetadata(id string, metaData dto.Metadata) err
 	}
 
 	return nil
+}
+
+func (f *ImageStorageService) GetFilePath(id, fileName string) (string, error) {
+	filePath := filepath.Join(f.StoragePath, id, fileName)
+	if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	return filePath, nil
 }
