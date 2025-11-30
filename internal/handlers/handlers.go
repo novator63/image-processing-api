@@ -367,11 +367,30 @@ func (h *ImageHandler) GetImage(w http.ResponseWriter, r *http.Request) {
 	switch ext {
 	case ".jpg", ".jpeg":
 		w.Header().Set("Content-Type", "image/jpg")
-	 case ".png":
+	case ".png":
 		w.Header().Set("Content-Type", "image/png")
 	}
 	w.WriteHeader(http.StatusOK)
 	io.Copy(w, file)
+}
+
+func (h *ImageHandler) GetImagesList(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	files, err := h.Storage.ListFiles(id)
+	if err != nil {
+		http.Error(w, "preparing images list error", http.StatusBadGateway)
+		return
+	}
+
+	listFilesResponse := dto.ListFilesResponse{
+		ID:    id,
+		Files: files,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(listFilesResponse)
 }
 
 // Подготавливает данные для работы с изображением, возвращает метаданные, исходный путь файла,

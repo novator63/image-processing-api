@@ -40,13 +40,18 @@ type OperationResponse struct {
 	Path string `json:"path"`
 }
 
+type ListFilesResponse struct {
+	ID string `json:"id"`
+	Files []string `json:"files"`
+}
+
 type ErrorResponse struct {
 	Error   string `json:"error"`
-	Status	int	   `json: "status"'`
+	Status  int    `json: "status"'`
 	Message string `json:"message"`
 }
 
 type Metadata struct {
-	Extension 	string `json:"extension"`
- 	ID 			string `json:"ID"`
+	Extension string `json:"extension"`
+	ID        string `json:"ID"`
 }

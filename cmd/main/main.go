@@ -34,6 +34,7 @@ func main() {
 	router.Use(middleware.Timeout(cfg.Timeout))
 
 	router.Post("/upload", imageHandler.UploadImage)
+	router.Get("/uploads/{id}", imageHandler.GetImagesList)
 	router.Route("/images/{id}", func(r chi.Router) {
 		r.Get("/{filename}", imageHandler.GetImage)
 		r.Post("/crop", imageHandler.CropImage)

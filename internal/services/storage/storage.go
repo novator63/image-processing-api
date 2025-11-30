@@ -24,6 +24,7 @@ type ImageStorage interface {
 	SaveProcessedFile(id, fileName string, img image.Image) error
 	LoadMetadata(id string) (dto.Metadata, error)
 	GetFilePath(id, fileName string) (string, error)
+	ListFiles(id string) ([]string, error)
 }
 
 type ImageStorageService struct {
@@ -145,6 +146,26 @@ func (f *ImageStorageService) saveMetadata(id string, metaData dto.Metadata) err
 	}
 
 	return nil
+}
+
+func(f *ImageStorageService) ListFiles(id string) ([]string, error) {
+	
+	dirPath := filepath.Join(f.StoragePath, id) 
+	if _, err := os.Stat(dirPath); errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	
+	var fileNames []string
+	files, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		fileNames = append(fileNames, file.Name())
+	}
+
+	return fileNames, nil
 }
 
 func (f *ImageStorageService) GetFilePath(id, fileName string) (string, error) {
