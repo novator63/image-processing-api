@@ -45,3 +45,8 @@ type ErrorResponse struct {
 	Status	int	   `json: "status"'`
 	Message string `json:"message"`
 }
+
+type Metadata struct {
+	Extension 	string `json:"extension"`
+ 	ID 			string `json:"ID"`
+}

@@ -2,26 +2,30 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"os"
 	"path/filepath"
 	"program/internal/config"
 	"program/internal/dto"
 	"program/internal/services/imageprocessing"
 	"program/internal/services/storage"
 	"slices"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type ImageHandler struct {
-	Storage storage.ImageStorage
+	Storage        storage.ImageStorage
 	ImageProcessor imageprocessing.ImageProcessor
-	cfg     *config.Config
+	cfg            *config.Config
 }
 
-func NewUploadHandler(storage storage.ImageStorageService, imageProcessor imageprocessing.ImageProcessingService, cfg *config.Config) *ImageHandler {
+func NewUploadHandler(storage *storage.ImageStorageService, imageProcessor imageprocessing.ImageProcessingService, cfg *config.Config) *ImageHandler {
 	return &ImageHandler{
-		Storage: storage,
+		Storage:        storage,
 		ImageProcessor: imageProcessor,
-		cfg:     cfg,
+		cfg:            cfg,
 	}
 }
 
@@ -52,11 +56,57 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		Path: path,
 	}
 
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(uploadResponse)
 }
 
 func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	metaData, err := h.Storage.LoadMetadata(id)
+	if err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
 
+	fileName := "crop" + metaData.Extension
+
+	path := filepath.Join(h.cfg.StoragePath, id)
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	cropRequest := dto.CropRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&cropRequest); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+	}
+
+	if cropRequest.Width <= 0 || cropRequest.Height <= 0 {
+		http.Error(w, "unprocessable entity error", http.StatusUnprocessableEntity)
+		return
+	}
+
+	inputPath := filepath.Join(h.cfg.StoragePath, id, "original"+metaData.Extension)
+	outputURL := filepath.Join(id, fileName)
+
+	img, err := h.ImageProcessor.Crop(inputPath, cropRequest.Width, cropRequest.Height)
+	if err != nil {
+		http.Error(w, "crop image error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.Storage.SaveProcessedFile(id, fileName, img); err != nil {
+		http.Error(w, "saving processed file error", http.StatusInternalServerError)
+		return
+	}
+
+	operationResopse := dto.OperationResponse{
+		ID:   id,
+		Path: outputURL,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(operationResopse)
 }

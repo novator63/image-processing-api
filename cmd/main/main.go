@@ -16,7 +16,7 @@ func main() {
 	cfg := config.MustLoad()
 	storage := storage.ImageStorageService{StoragePath: cfg.StoragePath}
 	imageProcessor := imageprocessing.ImageProcessingService{}
-	imageHandler := handlers.NewUploadHandler(storage, imageProcessor, cfg)
+	imageHandler := handlers.NewUploadHandler(&storage, imageProcessor, cfg)
 
 	router := chi.NewRouter()
 
