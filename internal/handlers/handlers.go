@@ -80,6 +80,7 @@ func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {
 	cropRequest := dto.CropRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&cropRequest); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
+		return
 	}
 
 	if cropRequest.Width <= 0 || cropRequest.Height <= 0 {
