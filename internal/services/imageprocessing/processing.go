@@ -2,6 +2,7 @@ package imageprocessing
 
 import (
 	"image"
+
 	"github.com/disintegration/imaging"
 )
 
@@ -13,7 +14,6 @@ type ImageProcessor interface {
 	Brightness(inputPath string, percentage float64) (image.Image, error)
 	Sharpen(inputPath string, sigma float64) (image.Image, error)
 	Grayscale(inputPath string) (image.Image, error)
-	Invert(inputPath string) (image.Image, error)
 }
 
 type ImageProcessingService struct{}
@@ -78,14 +78,5 @@ func (p ImageProcessingService) Grayscale(inputPath string) (image.Image, error)
 		return nil, err
 	}
 	src = imaging.Grayscale(src)
-	return src, nil
-}
-
-func (p ImageProcessingService) Invert(inputPath string) (image.Image, error) {
-	src, err := imaging.Open(inputPath)
-	if err != nil {
-		return nil, err
-	}
-	src = imaging.Invert(src)
 	return src, nil
 }

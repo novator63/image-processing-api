@@ -16,7 +16,7 @@ func main() {
 	cfg := config.MustLoad()
 	storage := storage.ImageStorageService{StoragePath: cfg.StoragePath}
 	imageProcessor := imageprocessing.ImageProcessingService{}
-	imageHandler := handlers.NewUploadHandler(&storage, imageProcessor, cfg)
+	imageHandler := handlers.NewImageHandler(&storage, imageProcessor, cfg)
 
 	router := chi.NewRouter()
 
@@ -38,6 +38,10 @@ func main() {
 		r.Post("/crop", imageHandler.CropImage)
 		r.Post("/resize", imageHandler.ResizeImage)
 		r.Post("/blur", imageHandler.BlurImage)
+		r.Post("/contrast", imageHandler.ContrastImage)
+		r.Post("/brightness", imageHandler.BrightnessImage)
+		r.Post("/sharpen", imageHandler.SharpenImage)
+		r.Post("/grayscale", imageHandler.GrayscaleImage)
 	})
 
 	if err := server.ListenAndServe(); err != nil {
