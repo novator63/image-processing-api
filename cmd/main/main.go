@@ -34,7 +34,11 @@ func main() {
 	router.Use(middleware.Timeout(cfg.Timeout))
 
 	router.Post("/upload", imageHandler.UploadImage)
-	router.Post("/images/{id}/crop", imageHandler.CropImage)
+	router.Route("/images/{id}", func(r chi.Router) {
+		r.Post("/crop", imageHandler.CropImage)
+		r.Post("/resize", imageHandler.ResizeImage)
+		r.Post("/blur", imageHandler.BlurImage)
+	})
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("starting server error: %s", err)

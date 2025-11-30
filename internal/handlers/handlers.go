@@ -61,7 +61,6 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 
 func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-
 	metaData, inputPath, err := h.prepareImage(id)
 	if err != nil {
 		http.Error(w, "preparing image error", http.StatusBadRequest)
@@ -104,41 +103,187 @@ func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ImageHandler) ResizeImage(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	metaData, inputPath, err := h.prepareImage(id)
+	if err != nil {
+		http.Error(w, "preparing image error", http.StatusBadRequest)
+		return
+	}
 
+	processedFilename := "resize" + metaData.Extension
+	outputURL := "/images/" + id + "/" + processedFilename
+
+	resizeRequest := dto.ResizeRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&resizeRequest); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if resizeRequest.Width <= 0 || resizeRequest.Height <= 0 {
+		http.Error(w, "unprocessable entity error", http.StatusUnprocessableEntity)
+		return
+	}
+
+	img, err := h.ImageProcessor.Resize(inputPath, resizeRequest.Width, resizeRequest.Height)
+	if err != nil {
+		http.Error(w, "crop image error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.Storage.SaveProcessedFile(id, processedFilename, img); err != nil {
+		http.Error(w, "saving processed file error", http.StatusInternalServerError)
+		return
+	}
+
+	operationResponse := dto.OperationResponse{
+		ID:   id,
+		Path: outputURL,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(operationResponse)
 }
 
 func (h *ImageHandler) BlurImage(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	metaData, inputPath, err := h.prepareImage(id)
+	if err != nil {
+		http.Error(w, "preparing image error", http.StatusBadRequest)
+		return
+	}
+	processedFilename := "blur" + metaData.Extension
+	outputURL := "/images/" + id + "/" + processedFilename
 
+	blurRequest := dto.BlurRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&blurRequest); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if blurRequest.Sigma <= 0 {
+		http.Error(w, "unprocessable entity error", http.StatusUnprocessableEntity)
+		return
+	}
+
+	img, err := h.ImageProcessor.Blur(inputPath, blurRequest.Sigma)
+	if err != nil {
+		http.Error(w, "crop image error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.Storage.SaveProcessedFile(id, processedFilename, img); err != nil {
+		http.Error(w, "saving processed file error", http.StatusInternalServerError)
+		return
+	}
+
+	operationResponse := dto.OperationResponse{
+		ID:   id,
+		Path: outputURL,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(operationResponse)
 }
 
-func (h *ImageHandler) ContrastImage(w http.ResponseWriter, r *http.Request) {
+// func (h *ImageHandler) ContrastImage(w http.ResponseWriter, r *http.Request) {
+// 	id := chi.URLParam(r, "id")
+// 	metaData, inputPath, err := h.prepareImage(id)
+// 	if err != nil {
+// 		http.Error(w, "preparing image error", http.StatusBadRequest)
+// 		return
+// 	}
+// 	processedFilename := "contrast" + metaData.Extension
+// 	outputURL := "/images/" + id + "/" + processedFilename
 
-}
-func (h *ImageHandler) BrightnessImage(w http.ResponseWriter, r *http.Request) {
+// 	contrastRequest := dto.ContrastRequest{}
+// 	if err := json.NewDecoder(r.Body).Decode(&contrastRequest); err != nil {
+// 		http.Error(w, "bad request", http.StatusBadRequest)
+// 		return
+// 	}
+// }
 
-}
-func (h *ImageHandler) SharpenImage(w http.ResponseWriter, r *http.Request) {
+// func (h *ImageHandler) BrightnessImage(w http.ResponseWriter, r *http.Request) {
+// 	id := chi.URLParam(r, "id")
+// 	metaData, inputPath, err := h.prepareImage(id)
+// 	if err != nil {
+// 		http.Error(w, "preparing image error", http.StatusBadRequest)
+// 		return
+// 	}
+// 	processedFilename := "brightness" + metaData.Extension
+// 	outputURL := "/images/" + id + "/" + processedFilename
 
-}
-func (h *ImageHandler) GrayscaleImage(w http.ResponseWriter, r *http.Request) {
+// 	brightnessRequest := dto.BrightnessRequest{}
+// 	if err := json.NewDecoder(r.Body).Decode(&brightnessRequest); err != nil {
+// 		http.Error(w, "bad request", http.StatusBadRequest)
+// 		return
+// 	}
+// }
 
-}
-func (h *ImageHandler) InvertImage(w http.ResponseWriter, r *http.Request) {
+// func (h *ImageHandler) SharpenImage(w http.ResponseWriter, r *http.Request) {
+// 	id := chi.URLParam(r, "id")
+// 	metaData, inputPath, err := h.prepareImage(id)
+// 	if err != nil {
+// 		http.Error(w, "preparing image error", http.StatusBadRequest)
+// 		return
+// 	}
 
-}
+// 	processedFilename := "sharpen" + metaData.Extension
+// 	outputURL := "/images/" + id + "/" + processedFilename
 
+// 	sharpenRequest := dto.SharpenRequest{}
+// 	if err := json.NewDecoder(r.Body).Decode(&sharpenRequest); err != nil {
+// 		http.Error(w, "bad request", http.StatusBadRequest)
+// 		return
+// 	}
+// }
+
+// func (h *ImageHandler) GrayscaleImage(w http.ResponseWriter, r *http.Request) {
+// 	id := chi.URLParam(r, "id")
+// 	metaData, inputPath, err := h.prepareImage(id)
+// 	if err != nil {
+// 		http.Error(w, "preparing image error", http.StatusBadRequest)
+// 		return
+// 	}
+// 	processedFilename := "grayscale" + metaData.Extension
+// 	outputURL := "/images/" + id + "/" + processedFilename
+
+// 	grayscaleRequest := dto.GrayscaleRequest{}
+// 	if err := json.NewDecoder(r.Body).Decode(&grayscaleRequest); err != nil {
+// 		http.Error(w, "bad request", http.StatusBadRequest)
+// 		return
+// 	}
+// }
+
+// func (h *ImageHandler) InvertImage(w http.ResponseWriter, r *http.Request) {
+// 	id := chi.URLParam(r, "id")
+// 	metaData, inputPath, err := h.prepareImage(id)
+// 	if err != nil {
+// 		http.Error(w, "preparing image error", http.StatusBadRequest)
+// 		return
+// 	}
+// 	processedFilename := "invert" + metaData.Extension
+// 	outputURL := "/images/" + id + "/" + processedFilename
+
+// 	invertRequest := dto.InvertRequest{}
+// 	if err := json.NewDecoder(r.Body).Decode(&invertRequest); err != nil {
+// 		http.Error(w, "bad request", http.StatusBadRequest)
+// 		return
+// 	}
+// }
+
+// Подготавливает данные для работы с изображением, возвращает метаданные, исходный путь файла,
+// в противном слчуае возвращает ошибку
 func (h *ImageHandler) prepareImage(id string) (metaData dto.Metadata, inputPath string, err error) {
 	metaData, err = h.Storage.LoadMetadata(id)
 	if err != nil {
 		return dto.Metadata{}, "", err
 	}
-
 	originalFilename := "original" + metaData.Extension
-
 	inputPath, err = h.Storage.GetFilePath(id, originalFilename)
 	if err != nil {
 		return dto.Metadata{}, "", err
 	}
-
 	return metaData, inputPath, nil
 }
