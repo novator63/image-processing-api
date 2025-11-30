@@ -19,7 +19,7 @@ import (
 type ImageStorage interface {
 	GenerateID() string
 	SaveFile(id string, file multipart.File, extension string) (string, error)
-	GetFile(id string, fileName string) ([]byte, error)
+	GetFile(id string, fileName string) (*os.File, error)
 	DeleteFile(id string) error
 	SaveProcessedFile(id, fileName string, img image.Image) error
 	LoadMetadata(id string) (dto.Metadata, error)
@@ -81,21 +81,15 @@ func (f *ImageStorageService) SaveFile(id string, file multipart.File, ext strin
 
 // Возвращает файл из каталога. id stirng - айди каталога,  filename string -
 // имя возвращаемого файла (cropped, original, resized, ...)
-func (f *ImageStorageService) GetFile(id string, fileName string) ([]byte, error) {
+func (f *ImageStorageService) GetFile(id string, fileName string) (*os.File, error) {
 	readPath := filepath.Join(f.StoragePath, id, fileName)
 
 	file, err := os.Open(readPath)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
 
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
+	return file, nil
 }
 
 // Удаляет каталог по переданному ID
@@ -154,6 +148,7 @@ func (f *ImageStorageService) saveMetadata(id string, metaData dto.Metadata) err
 }
 
 func (f *ImageStorageService) GetFilePath(id, fileName string) (string, error) {
+	fileName = filepath.Base(fileName)
 	filePath := filepath.Join(f.StoragePath, id, fileName)
 	if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
 		return "", err

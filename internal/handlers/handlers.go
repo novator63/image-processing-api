@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"path/filepath"
 	"program/internal/config"
@@ -343,6 +344,34 @@ func (h *ImageHandler) GrayscaleImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(operationResponse)
+}
+
+func (h *ImageHandler) GetImage(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	fileName := chi.URLParam(r, "filename")
+
+	_, err := h.Storage.GetFilePath(id, fileName)
+	if err != nil {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	file, err := h.Storage.GetFile(id, fileName)
+	if err != nil {
+		http.Error(w, "get file error", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	ext := filepath.Ext(fileName)
+	switch ext {
+	case ".jpg", ".jpeg":
+		w.Header().Set("Content-Type", "image/jpg")
+	 case ".png":
+		w.Header().Set("Content-Type", "image/png")
+	}
+	w.WriteHeader(http.StatusOK)
+	io.Copy(w, file)
 }
 
 // Подготавливает данные для работы с изображением, возвращает метаданные, исходный путь файла,

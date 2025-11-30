@@ -35,6 +35,7 @@ func main() {
 
 	router.Post("/upload", imageHandler.UploadImage)
 	router.Route("/images/{id}", func(r chi.Router) {
+		r.Get("/{filename}", imageHandler.GetImage)
 		r.Post("/crop", imageHandler.CropImage)
 		r.Post("/resize", imageHandler.ResizeImage)
 		r.Post("/blur", imageHandler.BlurImage)
