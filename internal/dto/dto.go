@@ -45,6 +45,10 @@ type ListFilesResponse struct {
 	Files []string `json:"files"`
 }
 
+type IDsListResponse struct {
+	IDs []string `json:"ids"`
+}
+
 type ErrorResponse struct {
 	Error   string `json:"error"`
 	Status  int    `json: "status"'`

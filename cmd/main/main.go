@@ -33,18 +33,20 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Timeout(cfg.Timeout))
 
-	router.Post("/upload", imageHandler.UploadImage)
-	router.Get("/uploads/{id}", imageHandler.GetImagesList)
-	router.Route("/images/{id}", func(r chi.Router) {
-		r.Get("/{filename}", imageHandler.GetImage)
-		r.Post("/crop", imageHandler.CropImage)
-		r.Post("/resize", imageHandler.ResizeImage)
-		r.Post("/blur", imageHandler.BlurImage)
-		r.Post("/contrast", imageHandler.ContrastImage)
-		r.Post("/brightness", imageHandler.BrightnessImage)
-		r.Post("/sharpen", imageHandler.SharpenImage)
-		r.Post("/grayscale", imageHandler.GrayscaleImage)
-	})
+	router.Post("/images", imageHandler.UploadImage) 
+
+	router.Get("/images", imageHandler.ImageIDsList)
+	router.Get("/images/{id}", imageHandler.ImagesList)
+	router.Get("/images/{id}/{filename}", imageHandler.GetImage)
+	router.Delete("/images/{id}", imageHandler.DeleteImage)      // TODO
+
+	router.Post("/images/{id}/crop", imageHandler.CropImage)
+	router.Post("/images/{id}/resize", imageHandler.ResizeImage)
+	router.Post("/images/{id}/blur", imageHandler.BlurImage)
+	router.Post("/images/{id}/contrast", imageHandler.ContrastImage)
+	router.Post("/images/{id}/brightness", imageHandler.BrightnessImage)
+	router.Post("/images/{id}/sharpen", imageHandler.SharpenImage)
+	router.Post("/images/{id}/grayscale", imageHandler.GrayscaleImage)
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("starting server error: %s", err)

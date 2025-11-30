@@ -17,14 +17,15 @@ import (
 )
 
 type ImageStorage interface {
-	GenerateID() string
-	SaveFile(id string, file multipart.File, extension string) (string, error)
-	GetFile(id string, fileName string) (*os.File, error)
 	DeleteFile(id string) error
-	SaveProcessedFile(id, fileName string, img image.Image) error
-	LoadMetadata(id string) (dto.Metadata, error)
+	GenerateID() string
+	GetFile(id string, fileName string) (*os.File, error)
 	GetFilePath(id, fileName string) (string, error)
-	ListFiles(id string) ([]string, error)
+	LoadMetadata(id string) (dto.Metadata, error)
+	ListImages(id string) ([]string, error)
+	ListImageIDs() ([]string, error)
+	SaveFile(id string, file multipart.File, extension string) (string, error)
+	SaveProcessedFile(id, fileName string, img image.Image) error
 }
 
 type ImageStorageService struct {
@@ -111,6 +112,7 @@ func (f *ImageStorageService) SaveProcessedFile(id, fileName string, img image.I
 	return nil
 }
 
+// Метод считывает метаданные загруженного файла
 func (f *ImageStorageService) LoadMetadata(id string) (dto.Metadata, error) {
 
 	var metaData dto.Metadata
@@ -148,13 +150,13 @@ func (f *ImageStorageService) saveMetadata(id string, metaData dto.Metadata) err
 	return nil
 }
 
-func(f *ImageStorageService) ListFiles(id string) ([]string, error) {
-	
-	dirPath := filepath.Join(f.StoragePath, id) 
+func (f *ImageStorageService) ListImages(id string) ([]string, error) {
+
+	dirPath := filepath.Join(f.StoragePath, id)
 	if _, err := os.Stat(dirPath); errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
-	
+
 	var fileNames []string
 	files, err := os.ReadDir(dirPath)
 	if err != nil {
@@ -168,6 +170,25 @@ func(f *ImageStorageService) ListFiles(id string) ([]string, error) {
 	return fileNames, nil
 }
 
+func (f *ImageStorageService) ListImageIDs() ([]string, error) {
+	if _, err := os.Stat(f.StoragePath); errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+
+	var IDList []string
+	files, err := os.ReadDir(f.StoragePath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		IDList = append(IDList, file.Name())
+	}
+
+	return IDList, nil
+}
+
+// Возвращает путь до файла, также провереят его на существование
 func (f *ImageStorageService) GetFilePath(id, fileName string) (string, error) {
 	fileName = filepath.Base(fileName)
 	filePath := filepath.Join(f.StoragePath, id, fileName)

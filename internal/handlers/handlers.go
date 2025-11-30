@@ -60,6 +60,10 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(uploadResponse)
 }
 
+func (h *ImageHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
@@ -374,10 +378,10 @@ func (h *ImageHandler) GetImage(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, file)
 }
 
-func (h *ImageHandler) GetImagesList(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) ImagesList(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	files, err := h.Storage.ListFiles(id)
+	files, err := h.Storage.ListImages(id)
 	if err != nil {
 		http.Error(w, "preparing images list error", http.StatusBadGateway)
 		return
@@ -386,6 +390,22 @@ func (h *ImageHandler) GetImagesList(w http.ResponseWriter, r *http.Request) {
 	listFilesResponse := dto.ListFilesResponse{
 		ID:    id,
 		Files: files,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(listFilesResponse)
+}
+
+func (h *ImageHandler) ImageIDsList(w http.ResponseWriter, r *http.Request) {
+	IDsList, err := h.Storage.ListImageIDs()
+	if err != nil {
+		http.Error(w, "preparing images list error", http.StatusBadGateway)
+		return
+	}
+
+	listFilesResponse := dto.IDsListResponse{
+		IDs: IDsList,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
