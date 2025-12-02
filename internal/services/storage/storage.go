@@ -33,6 +33,11 @@ type ImageStorageService struct {
 	StoragePath string
 }
 
+const (
+	metadataFileName = "meta.json"
+	originalFileName = "original"
+)
+
 // Метод генерации случайного ID
 func (f *ImageStorageService) GenerateID() string {
 	bytes := make([]byte, 5)
@@ -57,8 +62,8 @@ func (f *ImageStorageService) SaveFile(id string, file multipart.File, ext strin
 	}
 
 	ext = strings.ToLower(ext)
-	dstPath := filepath.Join(f.StoragePath, id, "original" + ext)
-	dstURL := filepath.Base(f.StoragePath) + "/"+ id + "original"+ ext
+	dstPath := filepath.Join(f.StoragePath, id, originalFileName+ext)
+	dstURL := filepath.Join(id, originalFileName+ext)
 
 	dstFile, err := os.Create(dstPath)
 	if err != nil {
@@ -86,7 +91,7 @@ func (f *ImageStorageService) SaveFile(id string, file multipart.File, ext strin
 // Возвращает файл из каталога. id stirng - айди каталога,  filename string -
 // имя возвращаемого файла (cropped, original, resized, ...)
 func (f *ImageStorageService) GetFile(id string, fileName string) (*os.File, error) {
-	readPath := filepath.Join(f.StoragePath, id, fileName)
+	readPath := filepath.Join(f.StoragePath, id, filepath.Base(fileName))
 
 	file, err := os.Open(readPath)
 	if err != nil {
@@ -118,7 +123,7 @@ func (f *ImageStorageService) SaveProcessedFile(id, fileName string, img image.I
 func (f *ImageStorageService) LoadMetadata(id string) (dto.Metadata, error) {
 
 	var metaData dto.Metadata
-	metadataPath := filepath.Join(f.StoragePath, id, "meta.json")
+	metadataPath := filepath.Join(f.StoragePath, id, metadataFileName)
 
 	data, err := os.ReadFile(metadataPath)
 	if err != nil {
@@ -139,7 +144,7 @@ func (f *ImageStorageService) saveMetadata(id string, metaData dto.Metadata) err
 		return err
 	}
 
-	file, err := os.Create(filepath.Join(f.StoragePath, id, "meta.json"))
+	file, err := os.Create(filepath.Join(f.StoragePath, id, metadataFileName))
 	if err != nil {
 		return err
 	}
@@ -153,7 +158,6 @@ func (f *ImageStorageService) saveMetadata(id string, metaData dto.Metadata) err
 }
 
 func (f *ImageStorageService) ListImages(id string) ([]string, error) {
-
 	dirPath := filepath.Join(f.StoragePath, id)
 	if _, err := os.Stat(dirPath); errors.Is(err, os.ErrNotExist) {
 		return nil, err
