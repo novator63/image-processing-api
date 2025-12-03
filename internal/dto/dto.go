@@ -51,7 +51,7 @@ type IDsListResponse struct {
 
 type ErrorResponse struct {
 	Error   string `json:"error"`
-	Status  int    `json: "status"'`
+	Status  int    `json: "status"`
 	Message string `json:"message"`
 }
 
