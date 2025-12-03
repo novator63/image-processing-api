@@ -18,7 +18,7 @@ import (
 
 type ImageStorage interface {
 	DeleteFile(id string) error
-	Exists(id string) bool
+	Exists(id string) error
 	GenerateID() string
 	GetFile(id string, fileName string) (*os.File, error)
 	GetFilePath(id, fileName string) (string, error)
@@ -204,8 +204,11 @@ func (f *ImageStorageService) GetFilePath(id, fileName string) (string, error) {
 	return filePath, nil
 }
 
-func (s *ImageStorageService) Exists(id string) bool {
+func (s *ImageStorageService) Exists(id string) error {
 	path := filepath.Join(s.StoragePath, id)
 	_, err := os.Stat(path)
-	return err == nil
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -2,11 +2,14 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"program/internal/config"
 	"program/internal/dto"
+	"program/internal/http/apierror"
 	"program/internal/services/imageprocessing"
 	"program/internal/services/storage"
 	"slices"
@@ -28,26 +31,23 @@ func NewImageHandler(storage *storage.ImageStorageService, imageProcessor imagep
 	}
 }
 
-func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) error {
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "reading file error", http.StatusBadRequest)
-		return
+		return apierror.NewBadRequest("failed to read file", err)
 	}
 	defer file.Close()
 
 	extension := filepath.Ext(header.Filename)
 
 	if !slices.Contains(h.cfg.Images.AllowedFormats, extension) {
-		http.Error(w, "unsupported media type", http.StatusUnsupportedMediaType)
-		return
+		return apierror.NewValidation("unsupported media type", nil)
 	}
 
 	id := h.Storage.GenerateID()
 	path, err := h.Storage.SaveFile(id, file, extension)
 	if err != nil {
-		http.Error(w, "saving file error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	uploadResponse := dto.UploadResponse{
@@ -58,31 +58,33 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(uploadResponse)
+	return nil
 }
 
-func (h *ImageHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) DeleteImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 
-	if !h.Storage.Exists(id) {
-		http.Error(w, "image not found", http.StatusNotFound)
-		return
+	//TODO проверить работает ли это
+	if err := h.Storage.Exists(id); err != nil {
+		return apierror.NewNotFound("image not found", err)
 	}
 
-	err := h.Storage.DeleteFile(id)
-	if err != nil {
-		http.Error(w, "file delete error", http.StatusInternalServerError)
-		return
+	if err := h.Storage.DeleteFile(id); err != nil {
+		return apierror.NewInternal(err)
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	//изначально тут было - w.WriteHeader(http.StatusNoContent), решить что должно быть возвращеное
+	return nil
 }
 
-func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
 	if err != nil {
-		http.Error(w, "preparing image error", http.StatusBadRequest)
-		return
+		if errors.Is(err, os.ErrNotExist) {
+			return apierror.NewNotFound("image not found", err)
+		}
+		return apierror.NewInternal(err)
 	}
 
 	processedFilename := "crop" + metaData.Extension
@@ -90,24 +92,20 @@ func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {
 
 	cropRequest := dto.CropRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&cropRequest); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
+		return apierror.NewBadRequest("invalid JSON body", err)
 	}
 
 	if cropRequest.Width <= 0 || cropRequest.Height <= 0 {
-		http.Error(w, "unprocessable entity error", http.StatusUnprocessableEntity)
-		return
+		return apierror.NewValidation("width and height must be > 0", nil)
 	}
 
 	img, err := h.ImageProcessor.Crop(inputPath, cropRequest.Width, cropRequest.Height)
 	if err != nil {
-		http.Error(w, "crop image error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	if err := h.Storage.SaveProcessedFile(id, processedFilename, img); err != nil {
-		http.Error(w, "saving processed file error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	operationResponse := dto.OperationResponse{
@@ -118,14 +116,17 @@ func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(operationResponse)
+	return nil
 }
 
-func (h *ImageHandler) ResizeImage(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) ResizeImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
 	if err != nil {
-		http.Error(w, "preparing image error", http.StatusBadRequest)
-		return
+		if errors.Is(err, os.ErrNotExist) {
+			return apierror.NewNotFound("image not found", err)
+		}
+		return apierror.NewInternal(err)
 	}
 
 	processedFilename := "resize" + metaData.Extension
@@ -133,24 +134,20 @@ func (h *ImageHandler) ResizeImage(w http.ResponseWriter, r *http.Request) {
 
 	resizeRequest := dto.ResizeRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&resizeRequest); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
+		return apierror.NewBadRequest("invalid JSON body", err)
 	}
 
 	if resizeRequest.Width <= 0 || resizeRequest.Height <= 0 {
-		http.Error(w, "unprocessable entity error", http.StatusUnprocessableEntity)
-		return
+		return apierror.NewValidation("width and height must be > 0", nil)
 	}
 
 	img, err := h.ImageProcessor.Resize(inputPath, resizeRequest.Width, resizeRequest.Height)
 	if err != nil {
-		http.Error(w, "crop image error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	if err := h.Storage.SaveProcessedFile(id, processedFilename, img); err != nil {
-		http.Error(w, "saving processed file error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	operationResponse := dto.OperationResponse{
@@ -161,38 +158,37 @@ func (h *ImageHandler) ResizeImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(operationResponse)
+	return nil
 }
 
-func (h *ImageHandler) BlurImage(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) BlurImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
 	if err != nil {
-		http.Error(w, "preparing image error", http.StatusBadRequest)
-		return
+		if errors.Is(err, os.ErrNotExist) {
+			return apierror.NewNotFound("image not found", err)
+		}
+		return apierror.NewInternal(err)
 	}
 	processedFilename := "blur" + metaData.Extension
 	outputURL := "/images/" + id + "/" + processedFilename
 
 	blurRequest := dto.BlurRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&blurRequest); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
+		return apierror.NewBadRequest("invalid JSON body", err)
 	}
 
 	if blurRequest.Sigma <= 0 {
-		http.Error(w, "unprocessable entity error", http.StatusUnprocessableEntity)
-		return
+		return apierror.NewValidation("sigma must be > 0", nil)
 	}
 
 	img, err := h.ImageProcessor.Blur(inputPath, blurRequest.Sigma)
 	if err != nil {
-		http.Error(w, "crop image error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	if err := h.Storage.SaveProcessedFile(id, processedFilename, img); err != nil {
-		http.Error(w, "saving processed file error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	operationResponse := dto.OperationResponse{
@@ -203,38 +199,37 @@ func (h *ImageHandler) BlurImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(operationResponse)
+	return nil
 }
 
-func (h *ImageHandler) ContrastImage(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) ContrastImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
 	if err != nil {
-		http.Error(w, "preparing image error", http.StatusBadRequest)
-		return
+		if errors.Is(err, os.ErrNotExist) {
+			return apierror.NewNotFound("image not found", err)
+		}
+		return apierror.NewInternal(err)
 	}
 	processedFilename := "contrast" + metaData.Extension
 	outputURL := "/images/" + id + "/" + processedFilename
 
 	contrastRequest := dto.ContrastRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&contrastRequest); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
+		return apierror.NewBadRequest("invalid JSON body", err)
 	}
 
-	if contrastRequest.Percentage < -100 && contrastRequest.Percentage > 100 {
-		http.Error(w, "unprocessable entity error", http.StatusUnprocessableEntity)
-		return
+	if contrastRequest.Percentage < -100 || contrastRequest.Percentage > 100 {
+		return apierror.NewValidation("percentage must be in range [-100,100]", nil)
 	}
 
 	img, err := h.ImageProcessor.Contrast(inputPath, contrastRequest.Percentage)
 	if err != nil {
-		http.Error(w, "crop image error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	if err := h.Storage.SaveProcessedFile(id, processedFilename, img); err != nil {
-		http.Error(w, "saving processed file error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	operationResponse := dto.OperationResponse{
@@ -245,38 +240,37 @@ func (h *ImageHandler) ContrastImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(operationResponse)
+	return nil
 }
 
-func (h *ImageHandler) BrightnessImage(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) BrightnessImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
 	if err != nil {
-		http.Error(w, "preparing image error", http.StatusBadRequest)
-		return
+		if errors.Is(err, os.ErrNotExist) {
+			return apierror.NewNotFound("image not found", err)
+		}
+		return apierror.NewInternal(err)
 	}
 	processedFilename := "brightness" + metaData.Extension
 	outputURL := "/images/" + id + "/" + processedFilename
 
 	brightnessRequest := dto.BrightnessRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&brightnessRequest); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
+		return apierror.NewBadRequest("invalid JSON body", err)
 	}
 
-	if brightnessRequest.Percentage < -100 && brightnessRequest.Percentage > 100 {
-		http.Error(w, "unprocessable entity error", http.StatusUnprocessableEntity)
-		return
+	if brightnessRequest.Percentage < -100 || brightnessRequest.Percentage > 100 {
+		return apierror.NewValidation("percentage must be between -100 and 100", nil)
 	}
 
 	img, err := h.ImageProcessor.Brightness(inputPath, brightnessRequest.Percentage)
 	if err != nil {
-		http.Error(w, "crop image error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	if err := h.Storage.SaveProcessedFile(id, processedFilename, img); err != nil {
-		http.Error(w, "saving processed file error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	operationResponse := dto.OperationResponse{
@@ -287,14 +281,17 @@ func (h *ImageHandler) BrightnessImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(operationResponse)
+	return nil
 }
 
-func (h *ImageHandler) SharpenImage(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) SharpenImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
 	if err != nil {
-		http.Error(w, "preparing image error", http.StatusBadRequest)
-		return
+		if errors.Is(err, os.ErrNotExist) {
+			return apierror.NewNotFound("image not found", err)
+		}
+		return apierror.NewInternal(err)
 	}
 
 	processedFilename := "sharpen" + metaData.Extension
@@ -302,24 +299,20 @@ func (h *ImageHandler) SharpenImage(w http.ResponseWriter, r *http.Request) {
 
 	sharpenRequest := dto.SharpenRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&sharpenRequest); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
+		return apierror.NewBadRequest("invalid JSON body", err)
 	}
 
 	if sharpenRequest.Sigma <= 0 {
-		http.Error(w, "unprocessable entity error", http.StatusUnprocessableEntity)
-		return
+		return apierror.NewValidation("sigma must be > 0", nil)
 	}
 
 	img, err := h.ImageProcessor.Sharpen(inputPath, sharpenRequest.Sigma)
 	if err != nil {
-		http.Error(w, "crop image error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	if err := h.Storage.SaveProcessedFile(id, processedFilename, img); err != nil {
-		http.Error(w, "saving processed file error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	operationResponse := dto.OperationResponse{
@@ -330,27 +323,28 @@ func (h *ImageHandler) SharpenImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(operationResponse)
+	return nil
 }
 
-func (h *ImageHandler) GrayscaleImage(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) GrayscaleImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
 	if err != nil {
-		http.Error(w, "preparing image error", http.StatusBadRequest)
-		return
+		if errors.Is(err, os.ErrNotExist) {
+			return apierror.NewNotFound("image not found", err)
+		}
+		return apierror.NewInternal(err)
 	}
 	processedFilename := "grayscale" + metaData.Extension
 	outputURL := "/images/" + id + "/" + processedFilename
 
 	img, err := h.ImageProcessor.Grayscale(inputPath)
 	if err != nil {
-		http.Error(w, "crop image error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	if err := h.Storage.SaveProcessedFile(id, processedFilename, img); err != nil {
-		http.Error(w, "saving processed file error", http.StatusInternalServerError)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	operationResponse := dto.OperationResponse{
@@ -361,22 +355,21 @@ func (h *ImageHandler) GrayscaleImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(operationResponse)
+	return nil
 }
 
-func (h *ImageHandler) GetImage(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) GetImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	fileName := chi.URLParam(r, "filename")
 
 	_, err := h.Storage.GetFilePath(id, fileName)
 	if err != nil {
-		http.Error(w, "image not found", http.StatusNotFound)
-		return
+		return apierror.NewNotFound("image not found", err)
 	}
 
 	file, err := h.Storage.GetFile(id, fileName)
 	if err != nil {
-		http.Error(w, "get file error", http.StatusBadRequest)
-		return
+		return apierror.NewInternal(err)
 	}
 	defer file.Close()
 
@@ -389,15 +382,15 @@ func (h *ImageHandler) GetImage(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	io.Copy(w, file)
+	return nil
 }
 
-func (h *ImageHandler) ImagesList(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) ImagesList(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 
 	files, err := h.Storage.ListImages(id)
 	if err != nil {
-		http.Error(w, "preparing images list error", http.StatusBadGateway)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	listFilesResponse := dto.ListFilesResponse{
@@ -408,13 +401,13 @@ func (h *ImageHandler) ImagesList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(listFilesResponse)
+	return nil
 }
 
-func (h *ImageHandler) ImageIDsList(w http.ResponseWriter, r *http.Request) {
+func (h *ImageHandler) ImageIDsList(w http.ResponseWriter, r *http.Request) error {
 	IDsList, err := h.Storage.ListImageIDs()
 	if err != nil {
-		http.Error(w, "preparing images list error", http.StatusBadGateway)
-		return
+		return apierror.NewInternal(err)
 	}
 
 	listFilesResponse := dto.IDsListResponse{
@@ -424,6 +417,7 @@ func (h *ImageHandler) ImageIDsList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(listFilesResponse)
+	return nil
 }
 
 // Подготавливает данные для работы с изображением, возвращает метаданные, исходный путь файла,
