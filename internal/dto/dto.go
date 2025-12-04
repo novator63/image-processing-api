@@ -41,7 +41,7 @@ type OperationResponse struct {
 }
 
 type ListFilesResponse struct {
-	ID string `json:"id"`
+	ID    string   `json:"id"`
 	Files []string `json:"files"`
 }
 
@@ -50,8 +50,7 @@ type IDsListResponse struct {
 }
 
 type ErrorResponse struct {
-	Error   string `json:"error"`
-	Status  int    `json: "status"`
+	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
 

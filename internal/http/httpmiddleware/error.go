@@ -2,9 +2,11 @@ package httpmiddleware
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
-	"program/internal/http/handlerwrap"
+	"program/internal/dto"
 	"program/internal/http/apierror"
+	"program/internal/http/handlerwrap"
 )
 
 func ErrorHandler(next http.Handler) http.Handler {
@@ -15,11 +17,23 @@ func ErrorHandler(next http.Handler) http.Handler {
 			return
 		}
 
-		// TODO  отдельное логирование отдельные client error response
 		if apiErr, ok := err.(*apierror.APIError); ok {
+			log.Printf(
+				"ERROR: %v | STATUS=%d | PATH=%s | METHOD=%s",
+				apiErr.Err,
+				apiErr.StatusCode,
+				r.URL.Path,
+				r.Method,
+			)
+
+			errorRespone := dto.ErrorResponse{
+				Code:    apiErr.StatusCode,
+				Message: apiErr.Message,
+			}
+
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(apiErr.StatusCode)
-			json.NewEncoder(w).Encode(apiErr)
+			json.NewEncoder(w).Encode(errorRespone)
 			return
 		}
 
