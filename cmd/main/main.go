@@ -10,9 +10,18 @@ import (
 	"program/internal/services/imageprocessing"
 	"program/internal/services/storage"
 
+	_ "program/docs"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
+
+// @title 			Processing API
+// @version 		1.0
+// @description 	REST API для базовой обработки изображений
+// @BasePath 		/
+// @host 			localhost:8080
 
 func main() {
 	cfg := config.MustLoad()
@@ -28,7 +37,7 @@ func main() {
 		ReadTimeout: cfg.HTTPServer.Timeout,
 		IdleTimeout: cfg.HTTPServer.IdleTimeout,
 	}
-	
+
 	router.Use(middleware.Logger)
 	router.Use(middleware.RealIP)
 	router.Use(middleware.RequestID)
@@ -36,7 +45,8 @@ func main() {
 	router.Use(middleware.Timeout(cfg.Timeout))
 	router.Use(httpmiddleware.ErrorHandler)
 
-	router.Post("/images", handlerwrap.WrapHandler(imageHandler.UploadImage)) 
+	router.Get("/swagger/*", httpSwagger.WrapHandler)
+	router.Post("/images", handlerwrap.WrapHandler(imageHandler.UploadImage))
 
 	router.Get("/images", handlerwrap.WrapHandler(imageHandler.ImageIDsList))
 	router.Get("/images/{id}", handlerwrap.WrapHandler(imageHandler.ImagesList))

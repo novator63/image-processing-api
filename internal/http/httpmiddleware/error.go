@@ -27,7 +27,7 @@ func ErrorHandler(next http.Handler) http.Handler {
 			)
 
 			errorRespone := dto.ErrorResponse{
-				Code:    apiErr.StatusCode,
+				Code:    apiErr.Code,
 				Message: apiErr.Message,
 			}
 
