@@ -31,6 +31,18 @@ func NewImageHandler(storage *storage.ImageStorageService, imageProcessor imagep
 	}
 }
 
+// UploadImage godoc
+// @Summary      Загрузить изображение
+// @Description  Принимает изображение (multipart/form-data), сохраняет и возвращает ID и путь
+// @Tags         images
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        file  formData  file  true  "Загружаемый файл"
+// @Success      201   {object}  dto.UploadResponse
+// @Failure      400   {object}  dto.ErrorResponse
+// @Failure      422   {object}  dto.ErrorResponse
+// @Failure      500   {object}  dto.ErrorResponse
+// @Router       /images [post]
 func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) error {
 	file, header, err := r.FormFile("file")
 	if err != nil {
@@ -61,6 +73,15 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) error
 	return nil
 }
 
+// DeleteImage godoc
+// @Summary      Удалить набор изображений
+// @Tags         images
+// @Produce      json
+// @Param        id   path   string  true  "ID набора"
+// @Success      204  {string} string "deleted"
+// @Failure      404  {object} dto.ErrorResponse
+// @Failure      500  {object} dto.ErrorResponse
+// @Router       /images/{id} [delete]
 func (h *ImageHandler) DeleteImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 
@@ -77,6 +98,19 @@ func (h *ImageHandler) DeleteImage(w http.ResponseWriter, r *http.Request) error
 	return nil
 }
 
+// CropImage godoc
+// @Summary      Обрезать изображение
+// @Tags         processing
+// @Accept       json
+// @Produce      json
+// @Param        id    path   string         true  "ID набора"
+// @Param        body  body   dto.CropRequest  true  "Параметры обрезки"
+// @Success      200   {object} dto.OperationResponse
+// @Failure      400   {object} dto.ErrorResponse
+// @Failure      404   {object} dto.ErrorResponse
+// @Failure      422   {object} dto.ErrorResponse
+// @Failure      500   {object} dto.ErrorResponse
+// @Router       /images/{id}/crop [post]
 func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
@@ -119,6 +153,19 @@ func (h *ImageHandler) CropImage(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// ResizeImage godoc
+// @Summary      Изменить размер изображения
+// @Tags         processing
+// @Accept       json
+// @Produce      json
+// @Param        id    path   string            true  "ID набора"
+// @Param        body  body   dto.ResizeRequest  true  "Параметры resize"
+// @Success      200   {object} dto.OperationResponse
+// @Failure      400   {object} dto.ErrorResponse
+// @Failure      404   {object} dto.ErrorResponse
+// @Failure      422   {object} dto.ErrorResponse
+// @Failure      500   {object} dto.ErrorResponse
+// @Router       /images/{id}/resize [post]
 func (h *ImageHandler) ResizeImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
@@ -161,6 +208,19 @@ func (h *ImageHandler) ResizeImage(w http.ResponseWriter, r *http.Request) error
 	return nil
 }
 
+// BlurImage godoc
+// @Summary      Размытие изображения (Gaussian Blur)
+// @Tags         processing
+// @Accept       json
+// @Produce      json
+// @Param        id    path   string         true  "ID набора"
+// @Param        body  body   dto.BlurRequest  true  "Sigma (радиус размытия)"
+// @Success      200   {object} dto.OperationResponse
+// @Failure      400   {object} dto.ErrorResponse
+// @Failure      404   {object} dto.ErrorResponse
+// @Failure      422   {object} dto.ErrorResponse
+// @Failure      500   {object} dto.ErrorResponse
+// @Router       /images/{id}/blur [post]
 func (h *ImageHandler) BlurImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
@@ -202,6 +262,19 @@ func (h *ImageHandler) BlurImage(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// ContrastImage godoc
+// @Summary      Изменить контрастность изображения
+// @Tags         processing
+// @Accept       json
+// @Produce      json
+// @Param        id    path   string            true  "ID набора"
+// @Param        body  body   dto.ContrastRequest  true  "[-100..100]"
+// @Success      200   {object} dto.OperationResponse
+// @Failure      400   {object} dto.ErrorResponse
+// @Failure      404   {object} dto.ErrorResponse
+// @Failure      422   {object} dto.ErrorResponse
+// @Failure      500   {object} dto.ErrorResponse
+// @Router       /images/{id}/contrast [post]
 func (h *ImageHandler) ContrastImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
@@ -243,6 +316,19 @@ func (h *ImageHandler) ContrastImage(w http.ResponseWriter, r *http.Request) err
 	return nil
 }
 
+// BrightnessImage godoc
+// @Summary      Изменить яркость изображения
+// @Tags         processing
+// @Accept       json
+// @Produce      json
+// @Param        id    path   string              true  "ID набора"
+// @Param        body  body   dto.BrightnessRequest  true  "[-100..100]"
+// @Success      200   {object} dto.OperationResponse
+// @Failure      400   {object} dto.ErrorResponse
+// @Failure      404   {object} dto.ErrorResponse
+// @Failure      422   {object} dto.ErrorResponse
+// @Failure      500   {object} dto.ErrorResponse
+// @Router       /images/{id}/brightness [post]
 func (h *ImageHandler) BrightnessImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
@@ -284,6 +370,19 @@ func (h *ImageHandler) BrightnessImage(w http.ResponseWriter, r *http.Request) e
 	return nil
 }
 
+// SharpenImage godoc
+// @Summary      Повысить резкость изображения
+// @Tags         processing
+// @Accept       json
+// @Produce      json
+// @Param        id    path   string            true  "ID набора"
+// @Param        body  body   dto.SharpenRequest  true  "Sigma (степень резкости)"
+// @Success      200   {object} dto.OperationResponse
+// @Failure      400   {object} dto.ErrorResponse
+// @Failure      404   {object} dto.ErrorResponse
+// @Failure      422   {object} dto.ErrorResponse
+// @Failure      500   {object} dto.ErrorResponse
+// @Router       /images/{id}/sharpen [post]
 func (h *ImageHandler) SharpenImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
@@ -326,6 +425,16 @@ func (h *ImageHandler) SharpenImage(w http.ResponseWriter, r *http.Request) erro
 	return nil
 }
 
+// GrayscaleImage godoc
+// @Summary      Конвертировать изображение в grayscale
+// @Tags         processing
+// @Accept       json
+// @Produce      json
+// @Param        id   path  string  true  "ID набора"
+// @Success      200  {object} dto.OperationResponse
+// @Failure      404  {object} dto.ErrorResponse
+// @Failure      500  {object} dto.ErrorResponse
+// @Router       /images/{id}/grayscale [post]
 func (h *ImageHandler) GrayscaleImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	metaData, inputPath, err := h.prepareImage(id)
@@ -358,6 +467,16 @@ func (h *ImageHandler) GrayscaleImage(w http.ResponseWriter, r *http.Request) er
 	return nil
 }
 
+// GetImage godoc
+// @Summary      Получить изображение по имени файла
+// @Tags         images
+// @Produce      jpeg
+// @Param        id       path   string  true  "ID набора"
+// @Param        filename path   string  true  "Имя файла"
+// @Success      200      {file}  binary
+// @Failure      404      {object} dto.ErrorResponse
+// @Failure      500      {object} dto.ErrorResponse
+// @Router       /images/{id}/{filename} [get]
 func (h *ImageHandler) GetImage(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 	fileName := chi.URLParam(r, "filename")
@@ -385,6 +504,14 @@ func (h *ImageHandler) GetImage(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// ImagesList godoc
+// @Summary      Получить список файлов набора
+// @Tags         images
+// @Produce      json
+// @Param        id   path   string  true  "ID набора"
+// @Success      200  {object} dto.ListFilesResponse
+// @Failure      500  {object} dto.ErrorResponse
+// @Router       /images/{id} [get]
 func (h *ImageHandler) ImagesList(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 
@@ -404,6 +531,13 @@ func (h *ImageHandler) ImagesList(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
+// ImageIDsList godoc
+// @Summary      Получить список всех ID наборов изображений
+// @Tags         images
+// @Produce      json
+// @Success      200  {object} dto.IDsListResponse
+// @Failure      500  {object} dto.ErrorResponse
+// @Router       /images [get]
 func (h *ImageHandler) ImageIDsList(w http.ResponseWriter, r *http.Request) error {
 	IDsList, err := h.Storage.ListImageIDs()
 	if err != nil {

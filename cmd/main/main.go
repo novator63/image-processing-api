@@ -46,6 +46,7 @@ func main() {
 	router.Use(httpmiddleware.ErrorHandler)
 
 	router.Get("/swagger/*", httpSwagger.WrapHandler)
+	
 	router.Post("/images", handlerwrap.WrapHandler(imageHandler.UploadImage))
 
 	router.Get("/images", handlerwrap.WrapHandler(imageHandler.ImageIDsList))

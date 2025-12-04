@@ -1,9 +1,488 @@
 basePath: /
+definitions:
+  dto.BlurRequest:
+    properties:
+      sigma:
+        type: number
+    type: object
+  dto.BrightnessRequest:
+    properties:
+      percentage:
+        type: number
+    type: object
+  dto.ContrastRequest:
+    properties:
+      percentage:
+        type: number
+    type: object
+  dto.CropRequest:
+    properties:
+      height:
+        type: integer
+      width:
+        type: integer
+    type: object
+  dto.ErrorResponse:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+  dto.IDsListResponse:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  dto.ListFilesResponse:
+    properties:
+      files:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+    type: object
+  dto.OperationResponse:
+    properties:
+      id:
+        type: string
+      path:
+        type: string
+    type: object
+  dto.ResizeRequest:
+    properties:
+      height:
+        type: integer
+      width:
+        type: integer
+    type: object
+  dto.SharpenRequest:
+    properties:
+      sigma:
+        type: number
+    type: object
+  dto.UploadResponse:
+    properties:
+      id:
+        type: string
+      path:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
   description: REST API для базовой обработки изображений
   title: Processing API
   version: "1.0"
-paths: {}
+paths:
+  /images:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.IDsListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Получить список всех ID наборов изображений
+      tags:
+      - images
+    post:
+      consumes:
+      - multipart/form-data
+      description: Принимает изображение (multipart/form-data), сохраняет и возвращает
+        ID и путь
+      parameters:
+      - description: Загружаемый файл
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.UploadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Загрузить изображение
+      tags:
+      - images
+  /images/{id}:
+    delete:
+      parameters:
+      - description: ID набора
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: deleted
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Удалить набор изображений
+      tags:
+      - images
+    get:
+      parameters:
+      - description: ID набора
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ListFilesResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Получить список файлов набора
+      tags:
+      - images
+  /images/{id}/{filename}:
+    get:
+      parameters:
+      - description: ID набора
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Имя файла
+        in: path
+        name: filename
+        required: true
+        type: string
+      produces:
+      - image/jpeg
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Получить изображение по имени файла
+      tags:
+      - images
+  /images/{id}/blur:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID набора
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Sigma (радиус размытия)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.BlurRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.OperationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Размытие изображения (Gaussian Blur)
+      tags:
+      - processing
+  /images/{id}/brightness:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID набора
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: '[-100..100]'
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.BrightnessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.OperationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Изменить яркость изображения
+      tags:
+      - processing
+  /images/{id}/contrast:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID набора
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: '[-100..100]'
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ContrastRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.OperationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Изменить контрастность изображения
+      tags:
+      - processing
+  /images/{id}/crop:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID набора
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Параметры обрезки
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CropRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.OperationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Обрезать изображение
+      tags:
+      - processing
+  /images/{id}/grayscale:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID набора
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.OperationResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Конвертировать изображение в grayscale
+      tags:
+      - processing
+  /images/{id}/resize:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID набора
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Параметры resize
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResizeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.OperationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Изменить размер изображения
+      tags:
+      - processing
+  /images/{id}/sharpen:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID набора
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Sigma (степень резкости)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SharpenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.OperationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Повысить резкость изображения
+      tags:
+      - processing
 swagger: "2.0"
