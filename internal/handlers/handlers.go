@@ -102,7 +102,7 @@ func (h *ImageHandler) DeleteImage(w http.ResponseWriter, r *http.Request) error
 		return apierror.NewInternal(err)
 	}
 
-	//изначально тут было - w.WriteHeader(http.StatusNoContent), решить что должно быть возвращеное
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
