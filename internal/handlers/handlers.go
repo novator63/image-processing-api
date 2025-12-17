@@ -13,6 +13,7 @@ import (
 	"program/internal/services/imageprocessing"
 	"program/internal/services/storage"
 	"slices"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -44,8 +45,15 @@ func NewImageHandler(storage *storage.ImageStorageService, imageProcessor imagep
 // @Failure      500   {object}  dto.ErrorResponse
 // @Router       /images [post]
 func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) error {
+	r.Body = http.MaxBytesReader(w, r.Body, int64(h.cfg.Images.MaxUploadSizeMb)<<20)
+
 	file, header, err := r.FormFile("file")
 	if err != nil {
+		if errors.Is(err, http.ErrBodyReadAfterClose) ||
+			strings.Contains(err.Error(), "http: request body too large") {
+			return apierror.NewValidation("file is too large", nil)
+		}
+
 		return apierror.NewBadRequest("failed to read file", err)
 	}
 	defer file.Close()
