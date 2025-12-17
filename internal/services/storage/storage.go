@@ -9,6 +9,7 @@ import (
 	"io"
 	"mime/multipart"
 	"os"
+	"path"
 	"path/filepath"
 	"program/internal/dto"
 	"strings"
@@ -63,7 +64,7 @@ func (f *ImageStorageService) SaveFile(id string, file multipart.File, ext strin
 
 	ext = strings.ToLower(ext)
 	dstPath := filepath.Join(f.StoragePath, id, originalFileName+ext)
-	dstURL := filepath.Join(id, originalFileName+ext)
+	dstURL := path.Join(id, originalFileName+ext)
 
 	dstFile, err := os.Create(dstPath)
 	if err != nil {
